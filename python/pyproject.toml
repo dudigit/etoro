@@ -1,0 +1,42 @@
+[project]
+name = "book-fetcher"
+version = "0.1.0"
+description = "Fetch, validate, and write book data from a public API."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.28.1",
+    "prometheus-client>=0.25.0",
+    "pydantic>=2.11.0",
+    "structlog>=25.5.0",
+    "tenacity>=9.1.4",
+]
+
+[project.scripts]
+book-fetcher = "book_fetcher.cli:main"
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.400",
+    "pytest>=8.3.0",
+    "ruff>=0.11.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+include = ["src", "tests"]
