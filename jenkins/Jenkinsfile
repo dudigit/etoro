@@ -114,6 +114,21 @@ pipeline {
             }
         }
 
+        stage('Approve deploy') {
+            when {
+                expression { params.ACTION == 'deploy' }
+            }
+            options {
+                timeout(time: 24, unit: 'HOURS')
+            }
+            steps {
+                input(
+                    message: 'Review the Helm diff log above, then approve to deploy.',
+                    ok: 'Deploy'
+                )
+            }
+        }
+
         stage('Deploy') {
             when {
                 expression { params.ACTION == 'deploy' }
