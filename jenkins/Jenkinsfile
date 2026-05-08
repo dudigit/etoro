@@ -65,6 +65,18 @@ pipeline {
             }
         }
 
+        stage('Setup Helm Plugins') {
+            steps {
+                script {
+                    // Check if plugin exists to save time
+                    def pluginInstalled = sh(script: "helm plugin list | grep -E '^diff[[:space:]]'", returnStatus: true) == 0
+                    if (!pluginInstalled) {
+                        sh "helm plugin install https://github.com/databus23/helm-diff"
+                    }
+                }
+            }
+        }
+
         stage('Preflight') {
             steps {
                 sh '''
@@ -85,6 +97,19 @@ pipeline {
                     helm template "$RELEASE_NAME" "$CHART_PATH" \
                       --namespace "$NAMESPACE" \
                       --set image.tag="$IMAGE_TAG_PARAM"
+                '''
+            }
+        }
+
+        stage('Helm diff') {
+            steps {
+                sh '''
+                    set -e
+                    helm diff upgrade "$RELEASE_NAME" "$CHART_PATH" \
+                      --namespace "$NAMESPACE" \
+                      --set image.tag="$IMAGE_TAG_PARAM" \
+                      --allow-unreleased \
+                      --color
                 '''
             }
         }
@@ -133,9 +158,10 @@ pipeline {
             steps {
                 sh '''
                     set -e
-                    echo "Ingress in namespace $NAMESPACE:"
-                    kubectl get ingress -n "$NAMESPACE" -o wide || true
-                    echo "Use: curl -i http://<INGRESS_LB_IP>/dudi"
+                    INGRESS_LB_IP=`kubectl get svc nginx-ingress-controller -n ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}'`
+                    echo "************************************************"
+                    echo "Use: curl -i http://"${INGRESS_LB_IP}"/dudi"
+                    echo "************************************************"
                 '''
             }
         }
