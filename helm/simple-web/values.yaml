@@ -37,7 +37,7 @@ resources:
 # KEDA: CPU + memory utilization + cron window (see cronStart/cronEnd, UTC).
 autoscaling:
   enabled: true
-  minReplicas: 0
+  minReplicas: 1
   maxReplicas: 10
   cpuThreshold: "70"
   memoryThreshold: "80"
