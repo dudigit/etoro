@@ -103,14 +103,16 @@ pipeline {
 
         stage('Helm diff') {
             steps {
-                sh '''
-                    set -e
-                    helm diff upgrade "$RELEASE_NAME" "$CHART_PATH" \
-                      --namespace "$NAMESPACE" \
-                      --set image.tag="$IMAGE_TAG_PARAM" \
-                      --allow-unreleased \
-                      --color
-                '''
+                ansiColor('xterm') {
+                    sh '''
+                        set -e
+                        helm diff upgrade "$RELEASE_NAME" "$CHART_PATH" \
+                          --namespace "$NAMESPACE" \
+                          --set image.tag="$IMAGE_TAG_PARAM" \
+                          --allow-unreleased \
+                          --color
+                    '''
+                }
             }
         }
 
