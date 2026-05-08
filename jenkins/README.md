@@ -1,3 +1,9 @@
+# Trigger the job in Jenkis
+
+```
+http://20.16.209.109:8080/job/simple-web/
+```
+
 # Jenkins pipeline
 
 This document explains the **Deploy** stage in [`Jenkinsfile`](Jenkinsfile) — specifically the `helm upgrade --install` block and the following `kubectl rollout status` check.
