@@ -122,10 +122,20 @@ pipeline {
                 timeout(time: 24, unit: 'HOURS')
             }
             steps {
+                script {
+                    currentBuild.description = '''
+Review the Helm diff in Console Output, then click Deploy below to proceed.
+'''.trim()
+                    currentBuild.displayName = "#${currentBuild.number} — APPROVAL PENDING: review Console Output, then Deploy"
+                }
                 input(
-                    message: 'Review the Helm diff log above, then approve to deploy.',
+                    message: 'Review the Helm diff in Console Output (previous stage), then approve.',
                     ok: 'Deploy'
                 )
+                script {
+                    currentBuild.displayName = "#${currentBuild.number}"
+                    currentBuild.description = ''
+                }
             }
         }
 
@@ -184,6 +194,10 @@ pipeline {
 
     post {
         always {
+            script {
+                currentBuild.displayName = "#${currentBuild.number}"
+                currentBuild.description = ''
+            }
             sh '''
                 kubectl get pods -n "$NAMESPACE" 2>/dev/null || true
                 helm status "$RELEASE_NAME" -n "$NAMESPACE" 2>/dev/null || true
