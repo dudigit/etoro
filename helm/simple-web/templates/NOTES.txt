@@ -1,0 +1,7 @@
+1. Get the ingress public IP (example: `kubectl get svc -n ingress` for nginx LoadBalancer).
+
+2. Open your app:
+   http://<INGRESS_PUBLIC_IP>{{ .Values.ingress.path }}
+
+Example:
+   curl -i http://<INGRESS_PUBLIC_IP>{{ .Values.ingress.path }}

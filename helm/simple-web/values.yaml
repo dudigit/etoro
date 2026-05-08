@@ -1,0 +1,52 @@
+# Default values — override per environment via CI or Helm -f.
+
+replicaCount: 1
+
+image:
+  registry: acrinterview.azurecr.io
+  repository: simple-web
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Optional docker registry pull secret name(s).
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 80
+
+ingress:
+  enabled: true
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  path: /dudi
+  pathType: Prefix
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# KEDA: CPU + memory utilization + cron window (see cronStart/cronEnd, UTC).
+autoscaling:
+  enabled: true
+  minReplicas: 0
+  maxReplicas: 10
+  cpuThreshold: "70"
+  memoryThreshold: "80"
+  cronStart: "0 8 * * *"
+  cronEnd: "0 0 * * *"
+  cronScheduledReplicas: "1"
+
+podAnnotations: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

@@ -1,0 +1,30 @@
+{{- if .Values.autoscaling.enabled }}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "simple-web.fullname" . }}
+  labels:
+    {{- include "simple-web.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "simple-web.fullname" . }}
+  minReplicaCount: {{ .Values.autoscaling.minReplicas }}
+  maxReplicaCount: {{ .Values.autoscaling.maxReplicas }}
+  triggers:
+    - type: cpu
+      metadata:
+        type: Utilization
+        value: "{{ .Values.autoscaling.cpuThreshold }}"
+    - type: memory
+      metadata:
+        type: Utilization
+        value: "{{ .Values.autoscaling.memoryThreshold }}"
+    - type: cron
+      metadata:
+        timezone: UTC
+        start: {{ .Values.autoscaling.cronStart | quote }}
+        end: {{ .Values.autoscaling.cronEnd | quote }}
+        desiredReplicas: "{{ .Values.autoscaling.cronScheduledReplicas }}"
+{{- end }}

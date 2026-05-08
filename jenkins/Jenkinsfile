@@ -1,0 +1,152 @@
+pipeline {
+    agent any
+
+    parameters {
+        choice(
+            name: 'ACTION',
+            choices: ['deploy', 'destroy'],
+            description: 'Deploy or destroy the Helm release'
+        )
+        string(
+            name: 'GIT_REPO',
+            defaultValue: 'https://github.com/dudigit/etoro.git',
+            description: 'GitHub repository URL'
+        )
+        string(
+            name: 'GIT_BRANCH',
+            defaultValue: 'main',
+            description: 'Git branch to deploy'
+        )
+        string(
+            name: 'NAMESPACE',
+            defaultValue: 'dudi',
+            description: 'Kubernetes namespace'
+        )
+        string(
+            name: 'RELEASE_NAME',
+            defaultValue: 'simple-web',
+            description: 'Helm release name (use simple-web when chart release name matches Deployment fullname)'
+        )
+        string(
+            name: 'IMAGE_TAG',
+            defaultValue: 'latest',
+            description: 'Container image tag (sets image.tag)'
+        )
+    }
+
+    environment {
+        AKS_NAME = 'devops-interview-aks'
+        AKS_RESOURCE_GROUP = 'devops-interview-rg'
+        CHART_PATH = 'helm/simple-web'
+        KUBECONFIG = "${HOME}/.kube/config"
+        NAMESPACE = "${params.NAMESPACE}"
+        RELEASE_NAME = "${params.RELEASE_NAME}"
+        IMAGE_TAG_PARAM = "${params.IMAGE_TAG}"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: params.GIT_BRANCH, url: params.GIT_REPO
+            }
+        }
+
+        stage('Azure & AKS') {
+            steps {
+                sh '''
+                    set -e
+                    az login -i
+                    az aks get-credentials \
+                      -n "$AKS_NAME" \
+                      -g "$AKS_RESOURCE_GROUP" \
+                      --overwrite-existing
+                    kubelogin convert-kubeconfig -l msi
+                '''
+            }
+        }
+
+        stage('Preflight') {
+            steps {
+                sh '''
+                    set -e
+                    helm version
+                    kubectl cluster-info
+                    kubectl get deploy -A | grep keda
+                    kubectl get svc -A | grep -i ingress || true
+                '''
+            }
+        }
+
+        stage('Helm validate') {
+            steps {
+                sh '''
+                    set -e
+                    helm lint "$CHART_PATH"
+                    helm template "$RELEASE_NAME" "$CHART_PATH" \
+                      --namespace "$NAMESPACE" \
+                      --set image.tag="$IMAGE_TAG_PARAM"
+                '''
+            }
+        }
+
+        stage('Deploy') {
+            when {
+                expression { params.ACTION == 'deploy' }
+            }
+            steps {
+                sh '''
+                    set -e
+
+                    helm upgrade --install "$RELEASE_NAME" "$CHART_PATH" \
+                      --namespace "$NAMESPACE" \
+                      --set image.tag="$IMAGE_TAG_PARAM" \
+                      --atomic \
+                      --wait \
+                      --timeout 10m
+
+                    kubectl rollout status "deployment/$RELEASE_NAME" \
+                      -n "$NAMESPACE" \
+                      --timeout=300s
+
+                    kubectl get ingress -n "$NAMESPACE"
+                    kubectl get scaledobject -n "$NAMESPACE" || echo "WARN: cannot list ScaledObjects (RBAC)"
+                '''
+            }
+        }
+
+        stage('Destroy') {
+            when {
+                expression { params.ACTION == 'destroy' }
+            }
+            steps {
+                sh '''
+                    set -e
+                    helm uninstall "$RELEASE_NAME" --namespace "$NAMESPACE" || true
+                '''
+            }
+        }
+
+        stage('Verify public path') {
+            when {
+                expression { params.ACTION == 'deploy' }
+            }
+            steps {
+                sh '''
+                    set -e
+                    echo "Ingress in namespace $NAMESPACE:"
+                    kubectl get ingress -n "$NAMESPACE" -o wide || true
+                    echo "Use: curl -i http://<INGRESS_LB_IP>/dudi"
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            sh '''
+                kubectl get pods -n "$NAMESPACE" 2>/dev/null || true
+                helm status "$RELEASE_NAME" -n "$NAMESPACE" 2>/dev/null || true
+            '''
+        }
+    }
+}

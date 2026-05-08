@@ -1,0 +1,6 @@
+apiVersion: v2
+name: simple-web
+description: simple-web Helm chart with Ingress and KEDA ScaledObject
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
